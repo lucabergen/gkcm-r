@@ -80,20 +80,8 @@ gkcm <- function(x, y, Z){
   # Estimate eigenvalues
   H <- .center_gram(R)/(n - 1)
   ev <- eigen(H, symmetric = TRUE, only.values = TRUE)$values
-  tol <- 100 * .Machine$double.eps * max(1, max(abs(ev)))
-  ev[ev < 0 & abs(ev) <= tol] <- 0
-  ev <- ev[ev > 0]
 
-  # Compute p-value
-  if (length(ev) == 0L) {
-    p_val <- if (t_stat <= tol) 1 else 0
-  } else if (length(ev) >= 4L) {
-    p_val <- 1 - momentchi2::lpb4(ev, t_stat)
-  } else {
-    p_val <- 1 - momentchi2::hbe(ev, t_stat)
-  }
-
-  p_val <- min(max(p_val, 0), 1)
+  p_val <- .compute_p_val(t_stat, ev)
 
   list(rho = rho, t_stat = t_stat, p_val = p_val)
 
@@ -177,15 +165,9 @@ gkcm_indepTest <- function(x, y, S, suffStat){
 
   # Estimate eigenvalues
   H <- .center_gram(R)/(n - 1)
-  ev <- .get_nonzero_eigenvalues(H)
+  ev <- eigen(H, symmetric = TRUE, only.values = TRUE)$values
 
-  # Compute p-value
-  if (length(ev) >= 4) {
-    p_val <- 1 - momentchi2::lpb4(ev, t_stat)
-  } else {
-    p_val <- 1 - momentchi2::hbe(ev, t_stat)
-  }
-
-  min(max(p_val, 0), 1)
+  .compute_p_val(t_stat, ev)
 
 }
+

@@ -202,3 +202,28 @@ gkcm_suffStat <- function(df){
   # (R + t(R)) / 2
 
 }
+
+#' @noRd
+.compute_p_val <- function(t_stat, ev) {
+
+  # Filter nonzero eigenvalues
+  tol <- 100 * .Machine$double.eps * max(1, max(abs(ev)))
+  ev[ev < 0 & abs(ev) <= tol] <- 0
+  ev <- ev[ev > tol]
+
+  if (length(ev) == 0) {
+    p_val <- if (t_stat <= tol) {1} else {0}
+  } else if (t_stat <= 0) {
+    p_val <- 1
+  } else {
+    dvs <- CompQuadForm::davies(t_stat, lambda = ev)
+    if (dvs$ifault == 0 && is.finite(dvs$Qq) && dvs$Qq >= 0 && dvs$Qq <= 1) {
+      p_val <- dvs$Qq
+    } else {
+      imh <- CompQuadForm::imhof(t_stat, lambda = ev)
+      p_val <- min(1, max(0, imh$Qq))
+    }
+  }
+
+  p_val
+}

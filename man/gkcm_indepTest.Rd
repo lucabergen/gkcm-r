@@ -30,8 +30,8 @@ The kernel embedding is determined by the column types in \code{suffStat$df} (Ga
 \eqn{\sigma = 1}, for numeric variables; Dirac for categorical variables).
 
 \code{suffStat} must be created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}} and is passed through by algorithms
-such as \code{\link[pcalg:pc]{pcalg::pc()}}, \code{\link[pcalg:fci]{pcalg::fci()}}, and \code{\link[tpc:tpc]{tpc::tpc()}}. For performance, \code{suffStat}
-is not re-validated on each call.
+such as \code{\link[pcalg:pc]{pcalg::pc()}}, \code{\link[pcalg:fci]{pcalg::fci()}}, \code{\link[tpc:tpc]{tpc::tpc()}}, and \code{\link[causalDisco:tfci]{causalDisco::tfci()}}.
+For performance, \code{suffStat} is not re-validated on each call.
 }
 \examples{
 if (requireNamespace("pcalg", quietly = TRUE)) {
