@@ -33,9 +33,8 @@
 #'
 #' @return A list with components:
 #' \describe{
-#'   \item{rho}{Numeric scalar in `[0, 1]` measuring the strength of (conditional) dependence.}
-#'   \item{t_stat}{Numeric scalar test statistic.}
-#'   \item{p_val}{Numeric scalar p-value in `[0, 1]`.}
+#'   \item{t_stat}{Non-negative numeric scalar.}
+#'   \item{p_val}{Numeric scalar in `[0, 1]`.}
 #' }
 #'
 #' @family GKCM conditional independence tests
@@ -68,14 +67,10 @@ gkcm <- function(x, y, Z){
 
   R <- K_r * L_r
   n <- ncol(R)
-  sum_R <- sum(R)
-
-  # Quantify the strength of conditional dependence
-  rho2 <- sum_R / (sum(diag(K_r)) * sum(diag(L_r)))
-  rho  <- sqrt(max(rho2, 0))  # Should be in [0,1]
+  sum_R <-
 
   # Compute test statistic
-  t_stat <- sum_R / n
+  t_stat <- sum(R) / n
 
   # Estimate eigenvalues
   H <- .center_gram(R)/(n - 1)
@@ -83,7 +78,7 @@ gkcm <- function(x, y, Z){
 
   p_val <- .compute_p_val(t_stat, ev)
 
-  list(rho = rho, t_stat = t_stat, p_val = p_val)
+  list(t_stat = t_stat, p_val = p_val)
 
 }
 
