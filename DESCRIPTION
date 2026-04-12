@@ -17,4 +17,5 @@ Imports:
     drf,
     Matrix,
     ranger,
-    CompQuadForm
+    CompQuadForm,
+    parallelly

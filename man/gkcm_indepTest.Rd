@@ -4,7 +4,7 @@
 \alias{gkcm_indepTest}
 \title{GKCM conditional independence test for causal discovery}
 \usage{
-gkcm_indepTest(x, y, S, suffStat)
+gkcm_indepTest(x, y, S, suffStat, num_threads = NULL)
 }
 \arguments{
 \item{x, y}{Integer scalar indices of the variables to test (column positions in \code{suffStat$df}).}
@@ -13,9 +13,14 @@ gkcm_indepTest(x, y, S, suffStat)
 case a marginal (unconditional) independence test is performed.}
 
 \item{suffStat}{A list of sufficient statistics created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.}
+
+\item{num_threads}{Either \code{NULL} or a single positive integer. The resulting
+number of threads is passed to \code{drf} and \code{ranger}. If \code{num_threads = NULL},
+half of the available cores are used (minimum 1). Set \code{num_threads = 1}
+to disable parallelization.}
 }
 \value{
-A numeric scalar p-value in \verb{[0, 1]}.
+Numeric scalar in \verb{[0, 1]}.
 }
 \description{
 Computes a p-value for testing whether variable \code{x} is conditionally independent

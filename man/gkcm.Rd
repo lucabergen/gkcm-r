@@ -4,7 +4,7 @@
 \alias{gkcm}
 \title{GKCM conditional independence test}
 \usage{
-gkcm(x, y, Z)
+gkcm(x, y, Z, num_threads = NULL)
 }
 \arguments{
 \item{x}{A vector of observations for the first variable. Must be an atomic vector
@@ -21,13 +21,17 @@ Must contain no missing values, have at least 10 observations, and must not cont
 constant columns/values. Numeric values must be finite. If \code{Z} is not \code{NULL}, its number
 of observations must match \code{length(x)} and \code{length(y)}. If a 0-column \code{data.frame} or
 matrix is supplied, it is interpreted as \code{Z = NULL} (with a warning).}
+
+\item{num_threads}{Either \code{NULL} or a single positive integer. The resulting
+number of threads is passed to \code{drf} and \code{ranger}. If \code{num_threads = NULL},
+half of the available cores are used (minimum 1). Set \code{num_threads = 1}
+to disable parallelization.}
 }
 \value{
 A list with components:
 \describe{
-\item{rho}{Numeric scalar in \verb{[0, 1]} measuring the strength of (conditional) dependence.}
-\item{t_stat}{Numeric scalar test statistic.}
-\item{p_val}{Numeric scalar p-value in \verb{[0, 1]}.}
+\item{t_stat}{Non-negative numeric scalar.}
+\item{p_val}{Numeric scalar in \verb{[0, 1]}.}
 }
 }
 \description{

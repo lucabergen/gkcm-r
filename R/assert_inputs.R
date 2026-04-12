@@ -190,3 +190,31 @@
 
 #' @noRd
 .assert_df <- checkmate::makeAssertionFunction(.check_df)
+
+#' @noRd
+.check_num_threads <- function(num_threads) {
+
+  if (is.null(num_threads)) {
+    return(TRUE)
+  }
+
+  # Must be a single positive integer
+  if (!is.numeric(num_threads) || length(num_threads) != 1 || is.na(num_threads)) {
+    return("must be NULL or a single positive integer")
+  }
+
+  if (!is.finite(num_threads) || num_threads < 1 || num_threads != as.integer(num_threads)) {
+    return("must be NULL or a single positive integer")
+  }
+
+  # Must not exceed available cores
+  n_avail <- parallelly::availableCores()
+  if (num_threads > n_avail) {
+    return(sprintf("must not exceed available cores (%d)", n_avail))
+  }
+
+  TRUE
+}
+
+#' @noRd
+.assert_num_threads <- checkmate::makeAssertionFunction(.check_num_threads)

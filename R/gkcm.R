@@ -30,6 +30,10 @@
 #'   constant columns/values. Numeric values must be finite. If `Z` is not `NULL`, its number
 #'   of observations must match `length(x)` and `length(y)`. If a 0-column `data.frame` or
 #'   matrix is supplied, it is interpreted as `Z = NULL` (with a warning).
+#' @param num_threads Either `NULL` or a single positive integer. The resulting
+#'   number of threads is passed to `drf` and `ranger`. If `num_threads = NULL`,
+#'   half of the available cores are used (minimum 1). Set `num_threads = 1`
+#'   to disable parallelization.
 #'
 #' @return A list with components:
 #' \describe{
@@ -55,15 +59,23 @@
 #' gkcm(x, y, Z = data.frame(z = z, g = g))
 #'
 #' @export
-gkcm <- function(x, y, Z){
+gkcm <- function(x, y, Z, num_threads = NULL){
 
   Z <- .normalize_cond(Z)
   x <- .normalize_var(x, Z)
   y <- .normalize_var(y, Z)
   .assert_n(x, y)
+  .assert_num_threads(num_threads)
 
-  K_r <- .get_residual_gram(x, Z) |> .center_gram()
-  L_r <- .get_residual_gram(y, Z) |> .center_gram()
+  n_threads <- if (is.null(num_threads)) {
+    # Use half of available cores (min. 1)
+    max(1, floor(parallelly::availableCores() / 2))
+  } else {
+    num_threads
+  }
+
+  K_r <- .get_residual_gram(x, Z, num_threads = n_threads) |> .center_gram()
+  L_r <- .get_residual_gram(y, Z, num_threads = n_threads) |> .center_gram()
 
   R <- K_r * L_r
   n <- ncol(R)
@@ -103,8 +115,12 @@ gkcm <- function(x, y, Z){
 #' @param S Integer vector of conditioning set indices. May be empty (`integer(0)`), in which
 #'   case a marginal (unconditional) independence test is performed.
 #' @param suffStat A list of sufficient statistics created by [gkcm_suffStat()].
+#' @param num_threads Either `NULL` or a single positive integer. The resulting
+#'   number of threads is passed to `drf` and `ranger`. If `num_threads = NULL`,
+#'   half of the available cores are used (minimum 1). Set `num_threads = 1`
+#'   to disable parallelization.
 #'
-#' @return A numeric scalar p-value in `[0, 1]`.
+#' @return Numeric scalar in `[0, 1]`.
 #'
 #' @family GKCM conditional independence tests
 #' @seealso [gkcm()], [gkcm_suffStat()], [pcalg::pc()], [pcalg::fci()], [tpc::tpc()], [causalDisco::tfci()]
@@ -122,7 +138,14 @@ gkcm <- function(x, y, Z){
 #' }
 #'
 #' @export
-gkcm_indepTest <- function(x, y, S, suffStat){
+gkcm_indepTest <- function(x, y, S, suffStat, num_threads = NULL){
+
+  n_threads <- if (is.null(num_threads)) {
+    # Use half of available cores (min. 1)
+    max(1, floor(parallelly::availableCores() / 2))
+  } else {
+    num_threads
+  }
 
   if (length(S) == 0) {
 
@@ -141,13 +164,15 @@ gkcm_indepTest <- function(x, y, S, suffStat){
     K_r <- .get_residual_gram(
       suffStat[[1]][, x],
       suffStat[[1]][, S, drop = F],
-      suffStat[[2]][[x]]
+      suffStat[[2]][[x]],
+      num_threads = n_threads
     ) |> .center_gram()
 
     L_r <- .get_residual_gram(
       suffStat[[1]][, y],
       suffStat[[1]][, S, drop = F],
-      suffStat[[2]][[y]]
+      suffStat[[2]][[y]],
+      num_threads = n_threads
     ) |> .center_gram()
 
   }

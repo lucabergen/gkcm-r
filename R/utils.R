@@ -65,6 +65,7 @@
 #' @noRd
 .gaussian_gram <- function(x, sigma = 1) {
 
+  # For vector-valued x consider parallelDist::parDist
   x <- as.vector(x)
   exp(-outer(x, x, "-")^2 / (2 * sigma^2))
 
