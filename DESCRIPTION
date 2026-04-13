@@ -1,6 +1,6 @@
 Package: gkcm
 Title: Generalised Kernel Covariance Measure for Conditional Independence Testing
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     person("Luca", "Bergen", email = "lucabergen@yahoo.com", role = c("aut", "cre"))
 Description: The Generalised Kernel Covariance Measure tests for conditional (or marginal) independence using RKHS-valued random forests. The package supports mixed (discrete and continuous) data and includes a version of the test to be used in combination with popular causal structure learning packages. 
