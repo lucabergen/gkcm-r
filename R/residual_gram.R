@@ -18,7 +18,8 @@
 
     # Ensure label levels match columns of P
     classes <- colnames(P)
-    y <- factor(y, levels = classes)
+    # Reorder and restrict to match ranger output (unused levels are dropped)
+    feat_repr_y <- feat_repr_y[, classes, drop = FALSE]
 
     # Probability residuals
     R <- feat_repr_y - P
