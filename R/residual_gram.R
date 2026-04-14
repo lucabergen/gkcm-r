@@ -8,7 +8,7 @@
 
     # Use in-bag predictions
     rf <- ranger::ranger(formula  = y ~ ., data = cbind(y = y, X = X),
-                         mtry = ncol(X), num.trees = ncol(X)*50,
+                         mtry = ncol(X), num.trees = 50 + ncol(X)*25,
                          probability = TRUE, splitrule = "gini",
                          num.threads = num_threads)
     pred <- stats::predict(rf, data = data.frame(X = X),
@@ -30,7 +30,7 @@
   } else {
 
     # Implicitly form and regress the feature map of numeric targets
-    rf <- drf::drf(X = X, Y = y, num.trees = ncol(X)*100, bandwidth = 1,
+    rf <- drf::drf(X = X, Y = y, num.trees = 50 + ncol(X)*50, bandwidth = 1,
                    honesty = F, response.scaling = F,
                    min.node.size = 5, mtry = 100,
                    num.threads = num_threads, compute.oob.predictions = F)
