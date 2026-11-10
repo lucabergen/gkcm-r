@@ -1,21 +1,27 @@
 Package: gkcm
 Title: Generalised Kernel Covariance Measure for Conditional Independence Testing
 Version: 0.0.0.9002
-Authors@R: 
+Authors@R:
     person("Luca", "Bergen", email = "lucabergen@yahoo.com", role = c("aut", "cre"))
-Description: The Generalised Kernel Covariance Measure tests for conditional (or marginal) independence using RKHS-valued random forests. The package supports mixed (discrete and continuous) data and includes a version of the test to be used in combination with popular causal structure learning packages. 
+Description: An implementation of the Generalised Kernel Covariance Measure
+    (GKCM) using RKHS-valued random forests. GKCM is a kernel-based test for
+    conditional (or marginal) independence. The package supports mixed (discrete
+    and continuous) data and includes a version of the test to be used in
+    combination with popular causal structure learning packages.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
-Suggests: 
+Suggests:
     pcalg,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Imports: 
+Imports:
     checkmate,
-    drf,
-    Matrix,
+    digest,
     ranger,
     CompQuadForm,
-    parallelly
+    parallelly,
+    okranger
+Remotes:
+    lucabergen/okranger@master
+Config/roxygen2/version: 8.1.0

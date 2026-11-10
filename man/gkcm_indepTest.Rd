@@ -4,23 +4,18 @@
 \alias{gkcm_indepTest}
 \title{GKCM conditional independence test for causal discovery}
 \usage{
-gkcm_indepTest(x, y, S, suffStat, num_threads = NULL)
+gkcm_indepTest(x, y, S, suffStat)
 }
 \arguments{
 \item{x, y}{Integer scalar indices of the variables to test (column positions in \code{suffStat$df}).}
 
 \item{S}{Integer vector of conditioning set indices. May be empty (\code{integer(0)}), in which
-case a marginal (unconditional) independence test is performed.}
+case a marginal independence test is performed.}
 
 \item{suffStat}{A list of sufficient statistics created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.}
-
-\item{num_threads}{Either \code{NULL} or a single positive integer. The resulting
-number of threads is passed to \code{drf} and \code{ranger}. If \code{num_threads = NULL},
-half of the available cores are used (minimum 1). Set \code{num_threads = 1}
-to disable parallelization.}
 }
 \value{
-Numeric scalar in \verb{[0, 1]}.
+p-value in \verb{[0, 1]}.
 }
 \description{
 Computes a p-value for testing whether variable \code{x} is conditionally independent
@@ -31,21 +26,22 @@ supplied as \code{indepTest} in constraint-based causal discovery algorithms.
 This function is called as \code{indepTest(x, y, S, suffStat)}, where \code{x} and \code{y} are
 integer indices of the tested variables and \code{S} is an integer vector of conditioning
 indices (possibly empty). All indices refer to column positions in \code{suffStat$df}.
-The kernel embedding is determined by the column types in \code{suffStat$df} (Gaussian,
-\eqn{\sigma = 1}, for numeric variables; Dirac for categorical variables).
+When values in \code{suffStat$df} are missing, \code{indepTest} uses testwise deletion,
+where rows with a missing value in \code{x}, \code{y}, or any variable in \code{S} are
+removed without a warning.
 
 \code{suffStat} must be created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}} and is passed through by algorithms
 such as \code{\link[pcalg:pc]{pcalg::pc()}}, \code{\link[pcalg:fci]{pcalg::fci()}}, \code{\link[tpc:tpc]{tpc::tpc()}}, and \code{\link[causalDisco:tfci]{causalDisco::tfci()}}.
-For performance, \code{suffStat} is not re-validated on each call.
+For performance, \code{suffStat} is not validated by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.
 }
 \examples{
 if (requireNamespace("pcalg", quietly = TRUE)) {
-  df <- airquality[complete.cases(airquality), ]
+  df <- iris
   suffStat <- gkcm_suffStat(df)
   g <- pcalg::fci(
     suffStat = suffStat,
     indepTest = gkcm_indepTest,
-    alpha = 0.2,
+    alpha = 0.1,
     labels = names(df)
   )
 }
@@ -54,8 +50,8 @@ if (requireNamespace("pcalg", quietly = TRUE)) {
 \seealso{
 \code{\link[=gkcm]{gkcm()}}, \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}, \code{\link[pcalg:pc]{pcalg::pc()}}, \code{\link[pcalg:fci]{pcalg::fci()}}, \code{\link[tpc:tpc]{tpc::tpc()}}, \code{\link[causalDisco:tfci]{causalDisco::tfci()}}
 
-Other GKCM conditional independence tests: 
-\code{\link{gkcm}()},
-\code{\link{gkcm_suffStat}()}
+Other GKCM conditional independence tests:
+\code{\link[=gkcm]{gkcm()}},
+\code{\link[=gkcm_suffStat]{gkcm_suffStat()}}
 }
 \concept{GKCM conditional independence tests}

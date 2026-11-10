@@ -4,53 +4,116 @@
 \alias{gkcm}
 \title{GKCM conditional independence test}
 \usage{
-gkcm(x, y, Z, num_threads = NULL)
+gkcm(
+  x = NULL,
+  y = NULL,
+  z = NULL,
+  num_RFFs = 20,
+  num_threads = NULL,
+  seed = NULL,
+  K = NULL,
+  L = NULL,
+  Phi = NULL,
+  Psi = NULL,
+  ranger_args_x = NULL,
+  ranger_args_y = NULL
+)
 }
 \arguments{
-\item{x}{A vector of observations for the first variable. Must be an atomic vector
-(numeric/integer/logical/factor/character), contain no missing values, have at least
-10 observations, and must not be constant. Numeric values must be finite (no \code{Inf},
-\code{-Inf}, or \code{NaN}).}
+\item{x}{Numeric or integer vector for numeric X, or a factor vector if X is
+categorical. Alternatively, supply \code{Phi} or \code{K}.}
 
-\item{y}{A vector of observations for the second variable. Same requirements as \code{x},
-and must have the same length as \code{x}.}
+\item{y}{Numeric or integer vector for numeric Y, or a factor vector if Y is
+categorical. Alternatively, supply \code{Psi} or \code{L}.}
 
-\item{Z}{Conditioning variables. Either \code{NULL} (marginal test) or a \code{data.frame},
-numeric/integer matrix, or atomic vector (treated as a single conditioning variable).
-Must contain no missing values, have at least 10 observations, and must not contain
-constant columns/values. Numeric values must be finite. If \code{Z} is not \code{NULL}, its number
-of observations must match \code{length(x)} and \code{length(y)}. If a 0-column \code{data.frame} or
-matrix is supplied, it is interpreted as \code{Z = NULL} (with a warning).}
+\item{z}{\code{NULL} for a marginal test, or a data frame of conditioning
+variables with at least one column. Columns must be numeric or integer for
+continuous variables or factors for categorical variables. Missing values
+are not allowed.}
 
-\item{num_threads}{Either \code{NULL} or a single positive integer. The resulting
-number of threads is passed to \code{drf} and \code{ranger}. If \code{num_threads = NULL},
-half of the available cores are used (minimum 1). Set \code{num_threads = 1}
-to disable parallelization.}
+\item{num_RFFs}{Even positive integer giving the number of random Fourier
+features used for numeric vector inputs \code{x} and \code{y}. Defaults to \code{20}.
+Set to \code{NULL} to use the Gaussian kernel directly.}
+
+\item{num_threads}{Number of threads used by the regression forests. If
+\code{NULL}, half of the available CPU cores are used (at least one). Set to \code{1}
+to use a single thread.}
+
+\item{seed}{Optional integer seed for random Fourier features and regression
+fits. If \code{NULL}, random seeds are drawn.}
+
+\item{K}{Optional Gram-matrix representation for X. One row and
+column per observation.}
+
+\item{L}{Optional Gram-matrix representation for Y. One row and
+column per observation.}
+
+\item{Phi}{Optional feature-matrix representation for X. One row per
+observation and at least one feature column.}
+
+\item{Psi}{Optional feature-matrix representation for Y. One row per
+observation and at least one feature column.}
+
+\item{ranger_args_x}{If not \code{NULL}, a non-empty named list of supported
+tuning arguments for regressing the features of X on Z.}
+
+\item{ranger_args_y}{If not \code{NULL}, a non-empty named list of supported
+tuning arguments for regressing the features of Y on Z.}
 }
 \value{
 A list with components:
 \describe{
-\item{t_stat}{Non-negative numeric scalar.}
-\item{p_val}{Numeric scalar in \verb{[0, 1]}.}
+\item{statistic}{Non-negative numeric scalar.}
+\item{p_value}{Numeric scalar in \verb{[0, 1]}.}
 }
 }
 \description{
-Tests whether variable \code{x} is conditionally independent of variable \code{y} given
-conditioning variables \code{Z} using the Generalized Kernel Covariance Measure (GKCM).
-Supports mixed continuous and categorical data and returns a p-value together with
-a standardized dependence measure.
+Tests whether the random variables X and Y are conditionally independent
+given Z using the Generalised Kernel Covariance Measure (GKCM). Their
+observed data are supplied through arguments \code{x} and \code{y}, and the
+conditioning data through \code{z}. Supports numeric and categorical variables,
+custom feature or Gram-matrix representations, and RKHS-valued
+regression with \code{okranger}.
 }
 \details{
-\code{x} and \code{y} are embedded using a Gaussian kernel for numeric variables (bandwidth
-\eqn{\sigma = 1}) and a Dirac kernel for categorical variables.
+By default, numeric vectors supplied through \code{x} and \code{y} are transformed
+using random Fourier features (RFFs, \code{num_RFFs = 20}). These approximate the
+feature map of the Gaussian kernel with unit lengthscale without constructing
+Gram matrices. Set \code{num_RFFs = NULL} to use the Gaussian kernel instead.
+Categorical variables supplied through \code{x} or \code{y} must be encoded as factors.
+They use the Dirac kernel, whose feature map can be represented by a one-hot
+encoding of the categories. Missing values are not allowed. Exclude or impute
+these before testing.
 
-Set \code{Z = NULL} to perform a marginal (unconditional) independence test. If a
-0-column \code{data.frame} or matrix is supplied for \code{Z}, it is interpreted as \code{Z = NULL}
-and a warning is issued.
+In conditional tests, the feature-mapped variables are regressed on the
+conditioning variables using random forests. \code{gkcm()} uses \code{okranger} for
+feature and Gram matrices and \code{ranger} for factor representations. The
+default values for tuning parameters are \code{mtry = ncol(z)}, \code{num.trees = 200},
+\code{min.node.size = 5}, \code{max.depth = 0} (no depth limit), and
+\code{approx.tolerance = 0.001} for feature and Gram matrices and
+\code{mtry = ncol(z)}, \code{num.trees = 200}, \code{min.node.size = 10}, and
+\code{max.depth = 0} for factor representations. These defaults can be overridden
+using \code{ranger_args_x} or \code{ranger_args_y}; unspecified defaults remain in
+effect. \code{mtry} may be a function. For each conditional test, the regression
+backend calls it with \code{ncol(z)} as its only argument. It must return a single
+whole number that is at least 1 and at most \code{ncol(z)}. This allows \code{mtry} to
+adapt to the number of conditioning variables. \code{num_threads} sets the number
+of threads used by the random forests. With \code{z = NULL}, GKCM performs a
+marginal independence test and skips regression.
 
-For causal discovery workflows (e.g., PC/FCI), use \code{\link[=gkcm_indepTest]{gkcm_indepTest()}} together with
-\code{\link[=gkcm_suffStat]{gkcm_suffStat()}} to provide this test in the interface required by packages such as
-\code{pcalg}.
+Custom feature or Gram matrices can be supplied for X and Y (\code{Phi} or \code{K} and
+\code{Psi} or \code{L}, respectively). Gram matrices must be symmetric and positive
+semidefinite; positive semidefiniteness is not checked. Since feature and
+Gram matrices use a different regression backend and tuning defaults than
+factor representations, we recommend supplying custom matrices only for
+numeric variables. For categorical variables, supply factor vectors through
+\code{x} and \code{y}. If multiple representations are given for a variable, the
+function warns and uses the feature matrix in preference to the Gram matrix,
+and the Gram matrix in preference to the data. Supply feature matrices
+instead of Gram matrices when the features are not high-dimensional.
+
+For causal discovery workflows (e.g., PC/FCI), use \code{\link[=gkcm_indepTest]{gkcm_indepTest()}}
+together with \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.
 }
 \examples{
 set.seed(1)
@@ -59,19 +122,25 @@ z <- rnorm(n)
 x <- z + rnorm(n, sd = 0.5)
 y <- z + rnorm(n, sd = 0.5)
 
-gkcm(x, y, Z = z)            # conditional
-gkcm(x, y, Z = NULL)         # marginal
-gkcm(x, y, Z = data.frame()) # treated as marginal (warns)
+gkcm(x, y, z = data.frame(z = z)) # conditional
+gkcm(x, y, z = NULL)              # marginal
 
 g <- factor(sample(c("a", "b", "c"), n, replace = TRUE))
-gkcm(x, y, Z = data.frame(z = z, g = g))
+gkcm(x, y, z = data.frame(z = z, g = g))
+
+# Pass categorical tested variables as factors:
+gkcm(x, g, z = data.frame(z = z))
+
+# User-supplied representations are also supported:
+Phi <- cbind(cos(x), sin(x))
+gkcm(Phi = Phi, y = y, z = data.frame(z = z))
 
 }
 \seealso{
 \code{\link[=gkcm_indepTest]{gkcm_indepTest()}}, \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}
 
-Other GKCM conditional independence tests: 
-\code{\link{gkcm_indepTest}()},
-\code{\link{gkcm_suffStat}()}
+Other GKCM conditional independence tests:
+\code{\link[=gkcm_indepTest]{gkcm_indepTest()}},
+\code{\link[=gkcm_suffStat]{gkcm_suffStat()}}
 }
 \concept{GKCM conditional independence tests}
