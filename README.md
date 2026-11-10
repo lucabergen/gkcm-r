@@ -41,7 +41,8 @@ gkcm(x, y, z = z)
 gkcm(x, y, z = NULL)
 
 # Categorical outcomes must be factors
-y_cat <- factor(ifelse(x > median(x), "high", "low"))
+prob <- plogis(2*z$z + rnorm(n, sd = 0.5))
+y_cat <- factor(rbinom(n, size = 1, prob = prob))
 gkcm(x, y_cat, z = z)
 ```
 
