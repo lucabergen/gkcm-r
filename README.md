@@ -27,23 +27,23 @@ remotes::install_github("lucabergen/gkcm-r")
 
 ```r
 library(gkcm)
-set.seed(1)
+set.seed(808)
 
 n <- 200
-z <- data.frame(z = rnorm(n))
-x <- z$z + rnorm(n, sd = 0.5)
-y <- z$z + rnorm(n, sd = 0.5)
+z <- rnorm(n)
+x <- z + rnorm(n, sd = 0.5)
+y <- z + rnorm(n, sd = 0.5)
 
 # Conditional test
-gkcm(x, y, z = z)
+gkcm(x, y, z = data.frame(z = z))
 
 # Marginal test
 gkcm(x, y, z = NULL)
 
 # Categorical outcomes must be factors
-prob <- plogis(2*z$z + rnorm(n, sd = 0.5))
+prob <- plogis(2*z + rnorm(n))
 y_cat <- factor(rbinom(n, size = 1, prob = prob))
-gkcm(x, y_cat, z = z)
+gkcm(x, y_cat, z = data.frame(z = z))
 ```
 
 ## Citation
