@@ -40,8 +40,8 @@ regression fits. If \code{NULL}, a random seed is drawn.}
 
 \item{ranger_args}{Optional named list of regression argument lists, indexed
 by the column names of \code{df}. The list may be incomplete or empty. Each
-entry must be a non-empty named list of supported tuning arguments.
-Omit a column to use its defaults. See Details.}
+entry must be a non-empty named list of supported tuning and regression
+arguments. Omit a column to use its defaults. See Details.}
 }
 \value{
 An object of class \code{"gkcm_suffStat"} containing the data frame,
@@ -64,21 +64,21 @@ Custom feature or Gram matrices can be supplied for variables in \code{df}. Thes
 take precedence over automatically generated representations, independently
 of \code{num_RFFs}. Gram matrices must be symmetric and positive semidefinite;
 positive semidefiniteness is not checked. Since feature and Gram matrices use
-a different regression backend and tuning parameter defaults than factor
-representations (see below), we recommend supplying custom matrices only for
-numeric variables. This preserves the backend and parameter defaults for
-factor representations of categorical variables.
+a different regression backend than factor representations (see below), we
+recommend supplying custom matrices only for numeric variables.
 
 In conditional tests, the feature-mapped variables are regressed on the
 variables using random forests. \code{\link[=gkcm_indepTest]{gkcm_indepTest()}} uses
 \code{okranger} for feature and Gram matrices and \code{ranger} for factor
 representations. The default values for tuning parameters are
-\code{mtry = length(S)}, \code{num.trees = 200}, \code{min.node.size = 5}, \code{max.depth = 0}
-(no depth limit), and \code{approx.tolerance = 0.001} for feature and Gram
-matrices and \code{mtry = length(S)}, \code{num.trees = 200}, \code{min.node.size = 10}, and
-\code{max.depth = 0} for factor representations, where \code{S} is the
-conditioning set. These defaults can be overridden per column using
-\code{ranger_args}; unspecified defaults remain in effect. \code{mtry} may be a
+\code{mtry = length(S)}, where \code{S} is the conditioning set, \code{num.trees = 500},
+\code{min.node.size = 5}, \code{min.bucket = 1}. \code{max.depth = 0} (no depth limit),
+\code{replace = TRUE}, \code{sample.fraction = 1}, and additionally
+\code{approx.tolerance = 0.001} for feature and Gram matrices. Furthermore, by
+default, the random forests ignore unordered factors
+(\code{respect.unordered.factors = "ignore"}) and compute in-sample predictions
+(\code{oob.predictions = FALSE}). These defaults can be overridden per column
+using \code{ranger_args}; unspecified defaults remain in effect. \code{mtry} may be a
 function. For each conditional test, the regression backend calls it with
 \code{length(S)} as its only argument. It must return a single integer that is at
 least 1 and at most \code{length(S)}. This allows \code{mtry} to adapt to the size of
@@ -93,7 +93,14 @@ missing values must match those in the corresponding column of \code{df}, i.e.,
 }
 \examples{
 df <- iris
-suffStat <- gkcm_suffStat(df, num_RFFs = 10, seed = 1)
+suffStat <- gkcm_suffStat(
+  df, num_RFFs = 10, num_threads = 4, seed = 1,
+  ranger_args = list(Sepal.Length = list(num.trees = 200),
+                     Sepal.Width = list(num.trees = 200),
+                     Petal.Length = list(num.trees = 200),
+                     Petal.Width = list(num.trees = 200),
+                     Species = list(num.trees = 200))
+)
 
 # Test Sepal.Length and Sepal.Width given Petal.Length:
 gkcm_indepTest(1, 2, 3, suffStat)

@@ -20,11 +20,13 @@
 #' In conditional tests, the feature-mapped variables are regressed on the
 #' conditioning variables using random forests. `gkcm()` uses `okranger` for
 #' feature and Gram matrices and `ranger` for factor representations. The
-#' default values for tuning parameters are `mtry = ncol(z)`, `num.trees = 200`,
-#' `min.node.size = 5`, `max.depth = 0` (no depth limit), and
-#' `approx.tolerance = 0.001` for feature and Gram matrices and
-#' `mtry = ncol(z)`, `num.trees = 200`, `min.node.size = 10`, and
-#' `max.depth = 0` for factor representations. These defaults can be overridden
+#' default values for tuning parameters are `mtry = ncol(z)`, `num.trees = 500`,
+#' `min.node.size = 5`, `min.bucket = 1`. `max.depth = 0` (no depth limit),
+#' `replace = TRUE`, `sample.fraction = 1`, and additionally
+#' `approx.tolerance = 0.001` for feature and Gram matrices. Furthermore, by
+#' default, the random forests ignore unordered factors
+#' (`respect.unordered.factors = "ignore"`) and compute in-sample predictions
+#' (`oob.predictions = FALSE`). These defaults can be overridden
 #' using `ranger_args_x` or `ranger_args_y`; unspecified defaults remain in
 #' effect. `mtry` may be a function. For each conditional test, the regression
 #' backend calls it with `ncol(z)` as its only argument. It must return a single
@@ -72,9 +74,9 @@
 #' @param Psi Optional feature-matrix representation for Y. One row per
 #'   observation and at least one feature column.
 #' @param ranger_args_x If not `NULL`, a non-empty named list of supported
-#'   tuning arguments for regressing the features of X on Z.
+#'   tuning and prediction arguments for regressing X on Z.
 #' @param ranger_args_y If not `NULL`, a non-empty named list of supported
-#'   tuning arguments for regressing the features of Y on Z.
+#'   tuning and prediction arguments for regressing Y on Z.
 #'
 #' @return A list with components:
 #' \describe{
@@ -92,7 +94,10 @@
 #' x <- z + rnorm(n, sd = 0.5)
 #' y <- z + rnorm(n, sd = 0.5)
 #'
-#' gkcm(x, y, z = data.frame(z = z)) # conditional
+#' gkcm(x, y, z = data.frame(z = z)) # conditional, in-sample predictions
+#' gkcm(x, y, z = data.frame(z = z),
+#'      ranger_args_x = list(oob.predictions = TRUE),
+#'      ranger_args_y = list(oob.predictions = TRUE)) # OOB predictions
 #' gkcm(x, y, z = NULL)              # marginal
 #'
 #' g <- factor(sample(c("a", "b", "c"), n, replace = TRUE))
@@ -234,12 +239,12 @@ gkcm <- function(x = NULL, y = NULL, z = NULL,
 #'
 #' `suffStat` must be created by [gkcm_suffStat()] and is passed through by algorithms
 #' such as [pcalg::pc()], [pcalg::fci()], [tpc::tpc()], and [causalDisco::tfci()].
-#' For performance, `suffStat` is not validated by [gkcm_suffStat()].
+#' For performance, \code{suffStat} is not validated by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.
 #'
 #' @param x,y Integer scalar indices of the variables to test (column positions in `suffStat$df`).
 #' @param S Integer vector of conditioning set indices. May be empty (`integer(0)`), in which
 #'   case a marginal independence test is performed.
-#' @param suffStat A list of sufficient statistics created by [gkcm_suffStat()].
+#' @param suffStat A list of sufficient statistics and settings created by [gkcm_suffStat()].
 #'
 #' @return p-value in `[0, 1]`.
 #'
@@ -248,14 +253,16 @@ gkcm <- function(x = NULL, y = NULL, z = NULL,
 #'
 #' @examples
 #' if (requireNamespace("pcalg", quietly = TRUE)) {
+#'   library(pcalg)
 #'   df <- iris
 #'   suffStat <- gkcm_suffStat(df)
-#'   g <- pcalg::fci(
+#'   skel <- skeleton(
 #'     suffStat = suffStat,
 #'     indepTest = gkcm_indepTest,
 #'     alpha = 0.1,
 #'     labels = names(df)
 #'   )
+#'   plot(skel@graph)
 #' }
 #'
 #' @export

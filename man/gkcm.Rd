@@ -55,10 +55,10 @@ observation and at least one feature column.}
 observation and at least one feature column.}
 
 \item{ranger_args_x}{If not \code{NULL}, a non-empty named list of supported
-tuning arguments for regressing the features of X on Z.}
+tuning and prediction arguments for regressing X on Z.}
 
 \item{ranger_args_y}{If not \code{NULL}, a non-empty named list of supported
-tuning arguments for regressing the features of Y on Z.}
+tuning and prediction arguments for regressing Y on Z.}
 }
 \value{
 A list with components:
@@ -88,11 +88,13 @@ these before testing.
 In conditional tests, the feature-mapped variables are regressed on the
 conditioning variables using random forests. \code{gkcm()} uses \code{okranger} for
 feature and Gram matrices and \code{ranger} for factor representations. The
-default values for tuning parameters are \code{mtry = ncol(z)}, \code{num.trees = 200},
-\code{min.node.size = 5}, \code{max.depth = 0} (no depth limit), and
-\code{approx.tolerance = 0.001} for feature and Gram matrices and
-\code{mtry = ncol(z)}, \code{num.trees = 200}, \code{min.node.size = 10}, and
-\code{max.depth = 0} for factor representations. These defaults can be overridden
+default values for tuning parameters are \code{mtry = ncol(z)}, \code{num.trees = 500},
+\code{min.node.size = 5}, \code{min.bucket = 1}. \code{max.depth = 0} (no depth limit),
+\code{replace = TRUE}, \code{sample.fraction = 1}, and additionally
+\code{approx.tolerance = 0.001} for feature and Gram matrices. Furthermore, by
+default, the random forests ignore unordered factors
+(\code{respect.unordered.factors = "ignore"}) and compute in-sample predictions
+(\code{oob.predictions = FALSE}). These defaults can be overridden
 using \code{ranger_args_x} or \code{ranger_args_y}; unspecified defaults remain in
 effect. \code{mtry} may be a function. For each conditional test, the regression
 backend calls it with \code{ncol(z)} as its only argument. It must return a single
@@ -122,7 +124,10 @@ z <- rnorm(n)
 x <- z + rnorm(n, sd = 0.5)
 y <- z + rnorm(n, sd = 0.5)
 
-gkcm(x, y, z = data.frame(z = z)) # conditional
+gkcm(x, y, z = data.frame(z = z)) # conditional, in-sample predictions
+gkcm(x, y, z = data.frame(z = z),
+     ranger_args_x = list(oob.predictions = TRUE),
+     ranger_args_y = list(oob.predictions = TRUE)) # OOB predictions
 gkcm(x, y, z = NULL)              # marginal
 
 g <- factor(sample(c("a", "b", "c"), n, replace = TRUE))

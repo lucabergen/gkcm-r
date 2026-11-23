@@ -236,6 +236,12 @@
 }
 
 #' @noRd
+.validate_oob_predictions <- function(oob.predictions) {
+  checkmate::assert_flag(oob.predictions, .var.name = "oob.predictions")
+  oob.predictions
+}
+
+#' @noRd
 .validate_ranger_args <- function(args, var, feature_type) {
 
   if (is.null(args)) {
@@ -255,12 +261,16 @@
          call. = FALSE)
   }
 
-  allowed_args <- switch(
-    feature_type,
-    data = c("mtry", "num.trees", "min.node.size", "max.depth"),
-    features = c("mtry", "num.trees", "min.node.size", "max.depth", "approx.tolerance"),
-    gram = c("mtry", "num.trees", "min.node.size", "max.depth", "approx.tolerance")
+  # Forest tuning parameters shared by both backends, plus the GKCM option
+  # controlling OOB versus in-sample predictions. Inputs and seeds remain internal.
+  allowed_args <- c(
+    "mtry", "num.trees", "min.node.size", "min.bucket", "max.depth",
+    "replace", "sample.fraction", "split.select.weights",
+    "always.split.variables", "respect.unordered.factors", "oob.predictions"
   )
+  if (feature_type %in% c("features", "gram")) {
+    allowed_args <- c(allowed_args, "approx.tolerance")
+  }
   unsupported_args <- setdiff(names(args), allowed_args)
 
   if (length(unsupported_args) > 0L) {
@@ -275,6 +285,10 @@
       ),
       call. = FALSE
     )
+  }
+
+  if ("oob.predictions" %in% names(args)) {
+    .validate_oob_predictions(args[["oob.predictions"]])
   }
 
   args

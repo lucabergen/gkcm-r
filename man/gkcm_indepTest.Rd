@@ -12,7 +12,7 @@ gkcm_indepTest(x, y, S, suffStat)
 \item{S}{Integer vector of conditioning set indices. May be empty (\code{integer(0)}), in which
 case a marginal independence test is performed.}
 
-\item{suffStat}{A list of sufficient statistics created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.}
+\item{suffStat}{A list of sufficient statistics and settings created by \code{\link[=gkcm_suffStat]{gkcm_suffStat()}}.}
 }
 \value{
 p-value in \verb{[0, 1]}.
@@ -36,14 +36,16 @@ For performance, \code{suffStat} is not validated by \code{\link[=gkcm_suffStat]
 }
 \examples{
 if (requireNamespace("pcalg", quietly = TRUE)) {
+  library(pcalg)
   df <- iris
   suffStat <- gkcm_suffStat(df)
-  g <- pcalg::fci(
+  skel <- skeleton(
     suffStat = suffStat,
     indepTest = gkcm_indepTest,
     alpha = 0.1,
     labels = names(df)
   )
+  plot(skel@graph)
 }
 
 }

@@ -17,21 +17,21 @@
 #' take precedence over automatically generated representations, independently
 #' of `num_RFFs`. Gram matrices must be symmetric and positive semidefinite;
 #' positive semidefiniteness is not checked. Since feature and Gram matrices use
-#' a different regression backend and tuning parameter defaults than factor
-#' representations (see below), we recommend supplying custom matrices only for
-#' numeric variables. This preserves the backend and parameter defaults for
-#' factor representations of categorical variables.
+#' a different regression backend than factor representations (see below), we
+#' recommend supplying custom matrices only for numeric variables.
 #'
 #' In conditional tests, the feature-mapped variables are regressed on the
 #'  variables using random forests. [gkcm_indepTest()] uses
 #' `okranger` for feature and Gram matrices and `ranger` for factor
 #' representations. The default values for tuning parameters are
-#' `mtry = length(S)`, `num.trees = 200`, `min.node.size = 5`, `max.depth = 0`
-#' (no depth limit), and `approx.tolerance = 0.001` for feature and Gram
-#' matrices and `mtry = length(S)`, `num.trees = 200`, `min.node.size = 10`, and
-#' `max.depth = 0` for factor representations, where `S` is the
-#' conditioning set. These defaults can be overridden per column using
-#' `ranger_args`; unspecified defaults remain in effect. `mtry` may be a
+#' `mtry = length(S)`, where `S` is the conditioning set, `num.trees = 500`,
+#' `min.node.size = 5`, `min.bucket = 1`. `max.depth = 0` (no depth limit),
+#' `replace = TRUE`, `sample.fraction = 1`, and additionally
+#' `approx.tolerance = 0.001` for feature and Gram matrices. Furthermore, by
+#' default, the random forests ignore unordered factors
+#' (`respect.unordered.factors = "ignore"`) and compute in-sample predictions
+#' (`oob.predictions = FALSE`). These defaults can be overridden per column
+#' using `ranger_args`; unspecified defaults remain in effect. `mtry` may be a
 #' function. For each conditional test, the regression backend calls it with
 #' `length(S)` as its only argument. It must return a single integer that is at
 #' least 1 and at most `length(S)`. This allows `mtry` to adapt to the size of
@@ -65,8 +65,8 @@
 #'   regression fits. If `NULL`, a random seed is drawn.
 #' @param ranger_args Optional named list of regression argument lists, indexed
 #'   by the column names of `df`. The list may be incomplete or empty. Each
-#'   entry must be a non-empty named list of supported tuning arguments.
-#'   Omit a column to use its defaults. See Details.
+#'   entry must be a non-empty named list of supported tuning and regression
+#'   arguments. Omit a column to use its defaults. See Details.
 #'
 #' @return An object of class `"gkcm_suffStat"` containing the data frame,
 #'   representations, per-column regression arguments, and test settings.
@@ -76,7 +76,14 @@
 #'
 #' @examples
 #' df <- iris
-#' suffStat <- gkcm_suffStat(df, num_RFFs = 10, seed = 1)
+#' suffStat <- gkcm_suffStat(
+#'   df, num_RFFs = 10, num_threads = 4, seed = 1,
+#'   ranger_args = list(Sepal.Length = list(num.trees = 200),
+#'                      Sepal.Width = list(num.trees = 200),
+#'                      Petal.Length = list(num.trees = 200),
+#'                      Petal.Width = list(num.trees = 200),
+#'                      Species = list(num.trees = 200))
+#' )
 #'
 #' # Test Sepal.Length and Sepal.Width given Petal.Length:
 #' gkcm_indepTest(1, 2, 3, suffStat)

@@ -6,6 +6,19 @@
 #' @noRd
 .regress_representation <- function(y_rep, x, num_threads = 1, seed, ranger_args) {
 
+  # GKCM handles this option itself; it is not an argument of either backend.
+  oob.predictions <- FALSE
+  if (!is.null(ranger_args) && "oob.predictions" %in% names(ranger_args)) {
+    oob.predictions <- .validate_oob_predictions(ranger_args[["oob.predictions"]])
+    ranger_args[["oob.predictions"]] <- NULL
+  }
+
+  if (oob.predictions && !is.null(ranger_args) && isFALSE(ranger_args$replace) &&
+      isTRUE(ranger_args$sample.fraction == 1)) {
+    stop("`replace = FALSE` and `sample.fraction = 1` leave no out-of-bag observations for GKCM.",
+         call. = FALSE)
+  }
+
   if (y_rep$type == "data"){
 
     # ranger with gini splitrule is equivalent to full-rank kernel splitting
@@ -14,9 +27,13 @@
 
     defaults <- list(
       mtry = ncol(x),
-      num.trees = 200,
-      min.node.size = 10,
-      max.depth = 0
+      num.trees = 500,
+      min.node.size = 5,
+      min.bucket = 1,
+      max.depth = 0,
+      replace = TRUE,
+      sample.fraction = 1,
+      respect.unordered.factors = "ignore"
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
@@ -28,15 +45,24 @@
       splitrule = "gini",
       seed = seed,
       num.threads = num_threads,
-      oob.error = TRUE
+      oob.error = oob.predictions,
+      write.forest = TRUE
     ))
 
     rf <- do.call(ranger::ranger, args, envir = asNamespace("ranger"))
 
-    P <- rf$predictions
+    P <- if (oob.predictions) {
+      rf$predictions
+    } else {
+      .predict_training_forest(rf, x, "ranger", num_threads, seed)
+    }
 
-    if (!all(is.finite(P))) {
-      stop("Some observations do not have finite OOB predictions. Use more trees.")
+    if (!is.matrix(P) || !all(is.finite(P))) {
+      stop(if (oob.predictions) {
+        "Some observations do not have finite OOB predictions. Use more trees or lower the sample fraction."
+      } else {
+        "The forest did not return finite training predictions."
+      }, call. = FALSE)
     }
 
     class_idx <- match(as.character(y_rep$value), colnames(P))
@@ -56,11 +82,15 @@
   } else if (y_rep$type == "features") {
 
     defaults <- list(
-      approx.tolerance = 0.001,
       mtry = ncol(x),
-      num.trees = 200,
+      num.trees = 500,
       min.node.size = 5,
-      max.depth = 0
+      min.bucket = 1,
+      max.depth = 0,
+      replace = TRUE,
+      sample.fraction = 1,
+      respect.unordered.factors = "ignore",
+      approx.tolerance = 0.001
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
@@ -70,23 +100,41 @@
       x = x,
       num.threads = num_threads,
       seed = seed,
-      oob.error = TRUE
+      oob.error = oob.predictions,
+      write.forest = TRUE
     ))
 
     rf <- do.call(okranger::okranger, args, envir = asNamespace("okranger"))
 
-    E <- y_rep$value - rf$predictions
+    predictions <- if (oob.predictions) {
+      rf$predictions
+    } else {
+      .predict_training_forest(rf, x, "okranger", num_threads, seed)
+    }
+    if (!is.matrix(predictions) || !identical(dim(predictions), dim(y_rep$value)) ||
+        !all(is.finite(predictions))) {
+      stop(if (oob.predictions) {
+        "Some observations do not have finite OOB predictions. Use more trees or lower the sample fraction."
+      } else {
+        "The forest did not return finite training predictions with the expected dimensions."
+      }, call. = FALSE)
+    }
+    E <- y_rep$value - predictions
 
     return(list(type = "features", value = E))
 
   } else {
 
     defaults <- list(
-      approx.tolerance = 0.001,
       mtry = ncol(x),
-      num.trees = 200,
+      num.trees = 500,
       min.node.size = 5,
-      max.depth = 0
+      min.bucket = 1,
+      max.depth = 0,
+      replace = TRUE,
+      sample.fraction = 1,
+      respect.unordered.factors = "ignore",
+      approx.tolerance = 0.001
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
@@ -103,13 +151,32 @@
 
     rf <- do.call(okranger::okranger, args, envir = asNamespace("okranger"))
 
-    W <- okranger::getForestWeights(rf, training.data = x, oob = TRUE)
+    W <- okranger::getForestWeights(rf, training.data = x, oob = oob.predictions)
+    # W may be sparse; matrix multiplication avoids densifying it.
+    weight_sum <- as.vector(W %*% rep(1, ncol(W)))
+    if (any(!is.finite(weight_sum) | weight_sum <= 0)) {
+      stop(if (oob.predictions) {
+        "Some observations do not have finite OOB weights. Use more trees or lower the sample fraction."
+      } else {
+        "Some observations do not have finite training-prediction weights."
+      }, call. = FALSE)
+    }
     B <- as.matrix(W %*% y_rep$value)
     R <- y_rep$value - B - t(B) + t(as.matrix(W %*% t(B)))
 
     return(list(type = "gram", value = R))
   }
 
+}
+
+#' Predict on the training covariates using the fitting backend's own method.
+#' Both packages use the same S3 class name, so select the correct method
+#' explicitly instead of relying on which package registered it last.
+#' @noRd
+.predict_training_forest <- function(rf, x, backend, num_threads, seed) {
+  predict_forest <- utils::getFromNamespace("predict.ranger.forest", backend)
+  predict_forest(rf$forest, data = x, num.threads = num_threads,
+                 seed = seed)$predictions
 }
 
 #' Use defaults for tuning parameters not overridden by ranger_args
