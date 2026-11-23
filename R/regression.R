@@ -13,12 +13,6 @@
     ranger_args[["oob.predictions"]] <- NULL
   }
 
-  if (oob.predictions && !is.null(ranger_args) && isFALSE(ranger_args$replace) &&
-      isTRUE(ranger_args$sample.fraction == 1)) {
-    stop("`replace = FALSE` and `sample.fraction = 1` leave no out-of-bag observations for GKCM.",
-         call. = FALSE)
-  }
-
   if (y_rep$type == "data"){
 
     # ranger with gini splitrule is equivalent to full-rank kernel splitting
@@ -37,6 +31,7 @@
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
+    .check_oob_sampling(args, oob.predictions)
 
     args <- c(args, list(
       y = y_rep$value,
@@ -94,6 +89,7 @@
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
+    .check_oob_sampling(args, oob.predictions)
 
     args <- c(args, list(
       Phi = y_rep$value,
@@ -138,6 +134,7 @@
     )
 
     args <- .merge_ranger_defaults(defaults, ranger_args)
+    .check_oob_sampling(args, oob.predictions)
 
     args <- c(args, list(
       K = y_rep$value,
@@ -167,6 +164,22 @@
     return(list(type = "gram", value = R))
   }
 
+}
+
+#' Check OOB compatibility after merging forest defaults and user arguments.
+#' @noRd
+.check_oob_sampling <- function(args, oob.predictions) {
+  if (oob.predictions && isFALSE(args$replace) &&
+      length(args$sample.fraction) == 1L &&
+      isTRUE(args$sample.fraction == 1)) {
+    stop(
+      "`oob.predictions = TRUE` requires out-of-bag observations. ",
+      "Use `replace = TRUE` or set `sample.fraction < 1`.",
+      call. = FALSE
+    )
+  }
+
+  invisible(NULL)
 }
 
 #' Predict on the training covariates using the fitting backend's own method.
