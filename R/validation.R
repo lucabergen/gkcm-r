@@ -737,27 +737,3 @@
 
   FALSE
 }
-
-#' Save kernel representations for numeric data;
-#' return factor for categorical data.
-#' @noRd
-.transform_data <- function(rep, num_RFFs) {
-
-  if (is.numeric(rep$value)) {
-    if (!is.null(num_RFFs)) {
-      rep$value <- .rff(rep$value, num_RFFs)
-      rep$type <- "features"
-    } else {
-      rep$value <- .gaussian_kernel(rep$value)
-      rep$type <- "gram"
-    }
-  } else {
-    if (!is.factor(rep$value)) {
-      rep$value <- as.factor(rep$value)
-    } else {
-      rep$value <- droplevels(rep$value)
-    }
-  }
-
-  rep
-}

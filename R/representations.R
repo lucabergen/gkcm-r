@@ -63,18 +63,6 @@
 }
 
 #' @noRd
-.rff <- function(x, n_features = 20, lengthscale = 1) {
-
-  x <- as.numeric(x)
-  m <- as.integer(n_features / 2L)
-
-  omega <- stats::rnorm(m, mean = 0, sd = 1 / lengthscale)
-  projection <- outer(x, omega)
-
-  sqrt(1 / m) * cbind(cos(projection), sin(projection))
-}
-
-#' @noRd
 .onehot_encode <- function(x){
 
   classes <- levels(x)
@@ -91,12 +79,101 @@
 }
 
 #' @noRd
-.gaussian_kernel <- function(x, sigma = 1) {
+.rff <- function(x, n_features = 20, lengthscale = 1) {
+
+  x <- as.numeric(x)
+  m <- as.integer(n_features / 2L)
+
+  omega <- stats::rnorm(m, mean = 0, sd = 1 / lengthscale)
+  projection <- outer(x, omega)
+
+  sqrt(1 / m) * cbind(cos(projection), sin(projection))
+}
+
+#' @noRd
+.gaussian_kernel <- function(x, lengthscale = 1) {
 
   # For vector-valued x consider parallelDist::parDist
   x <- as.vector(x)
-  exp(-outer(x, x, "-")^2 / (2 * sigma^2))
+  exp(-outer(x, x, "-")^2 / (2 * lengthscale^2))
 
+}
+
+#' Compute the median heuristic as defined by Garreau et al.. max_pairs
+#' specifies how many pairs of values are maximally computed. If the total
+#' number of pairs exceeds max_pairs, max_pairs pairs are sampled uniformly
+#' without replacement.
+#'
+.median_heuristic <- function(x, max_pairs = 1000^2) {
+
+  if (!is.numeric(x) || !is.null(dim(x))) {
+    stop("'x' must be a numeric vector.")
+  }
+
+  if (length(max_pairs) != 1L || !is.finite(max_pairs) ||
+      max_pairs < 1 || max_pairs != floor(max_pairs) ||
+      max_pairs > .Machine$integer.max) {
+    stop("'max_pairs' must be a positive integer.")
+  }
+
+  x <- x[is.finite(x)]
+  n <- length(x)
+
+  if (n < 2) {
+    stop("'x' must contain at least two finite values.")
+  }
+
+  n_pairs <- choose(n, 2)
+
+  if (n_pairs <= max_pairs) {
+    pair_ids <- seq_len(n_pairs)
+  } else {
+    pair_ids <- sample.int(n_pairs, size = max_pairs, replace = FALSE)
+  }
+
+  # Map pair IDs to distinct index pairs (i, j), where i < j
+  first_indices <- seq_len(n - 1)
+  pair_starts <- (first_indices - 1) * (2 * n - first_indices) / 2
+
+  i <- findInterval(pair_ids - 1, pair_starts)
+  j <- i + pair_ids - pair_starts[i]
+
+  distances <- abs(x[i] - x[j])
+
+  # Compute median heuristic
+  lengthscale <- sqrt(median(distances^2) / 2)
+
+  if (!is.finite(lengthscale) || lengthscale <= 0) {
+    stop("The median heuristic for 'x' is zero. ",
+         "Check for constant or highly tied data.")
+  }
+
+  lengthscale
+}
+
+#' Save kernel representations for numeric data;
+#' return factor for categorical data for use with ranger.
+#' TODO: Add name argument to give more informative errors.
+#' @noRd
+.transform_data <- function(rep, num_RFFs, lengthscale) {
+
+  if (is.numeric(rep$value)) {
+    if (!is.null(num_RFFs)) {
+      rep$value <- .rff(rep$value, num_RFFs, lengthscale = lengthscale)
+      rep$type <- "features"
+    } else {
+      rep$value <- .gaussian_kernel(rep$value, lengthscale = lengthscale)
+      rep$type <- "gram"
+    }
+  } else {
+    if (!is.factor(rep$value)) {
+      rep$value <- as.factor(rep$value)
+    } else {
+      rep$value <- droplevels(rep$value)
+    }
+  }
+
+  rep
 }
 
 #' Subtracts marginal feature mean and returns either a feature or Gram matrix

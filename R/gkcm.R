@@ -10,12 +10,12 @@
 #' @details
 #' By default, numeric vectors supplied through `x` and `y` are transformed
 #' using random Fourier features (RFFs, `num_RFFs = 20`). These approximate the
-#' feature map of the Gaussian kernel with unit lengthscale without constructing
-#' Gram matrices. Set `num_RFFs = NULL` to use the Gaussian kernel instead.
-#' Categorical variables supplied through `x` or `y` must be encoded as factors.
-#' They use the Dirac kernel, whose feature map can be represented by a one-hot
-#' encoding of the categories. Missing values are not allowed. Exclude or impute
-#' these before testing.
+#' feature map of the Gaussian kernel with median heuristic lengthscale without
+#' constructing Gram matrices. Set `num_RFFs = NULL` to use the Gaussian kernel
+#' instead. Categorical variables supplied through `x` or `y` must be encoded as
+#' factors. They use the Dirac kernel, whose feature map can be represented by a
+#' one-hot encoding of the categories. Missing values are not allowed. Exclude
+#' or impute these before testing.
 #'
 #' In conditional tests, the feature-mapped variables are regressed on the
 #' conditioning variables using random forests. `gkcm()` uses `okranger` for
@@ -158,13 +158,25 @@ gkcm <- function(x = NULL, y = NULL, z = NULL,
   seed_x <- sample.int(.Machine$integer.max, 1)
   seed_y <- sample.int(.Machine$integer.max, 1)
 
+  if (!is.null(x) && is.numeric(x)) {
+    lengthscale_x <- .median_heuristic(x)
+  } else {
+    lengthscale_x <- NULL
+  }
+
+  if (!is.null(y) && is.numeric(y)) {
+    lengthscale_y <- .median_heuristic(y)
+  } else {
+    lengthscale_y <- NULL
+  }
+
   # If numeric data was given, save Gaussian Gram matrix or Random Fourier Features
   if (x_rep$type == "data") {
-    x_rep <- .transform_data(x_rep, num_RFFs)
+    x_rep <- .transform_data(x_rep, num_RFFs, lengthscale_x)
   }
 
   if (y_rep$type == "data") {
-    y_rep <- .transform_data(y_rep, num_RFFs)
+    y_rep <- .transform_data(y_rep, num_RFFs, lengthscale_y)
   }
 
   ranger_args_x <- .validate_ranger_args(ranger_args_x, "x", x_rep$type)

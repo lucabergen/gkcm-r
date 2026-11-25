@@ -8,10 +8,10 @@
 #' @details
 #' By default, numeric columns are transformed using random Fourier features
 #' (RFFs, `num_RFFs = 20`). These approximate the feature map of the Gaussian
-#' kernel with unit lengthscale without constructing Gram matrices. Set
-#' `num_RFFs = NULL` to use the Gaussian kernel instead. Categorical variables
-#' must be encoded as factors. They use the Dirac kernel, whose feature map can
-#' be represented by a one-hot encoding of the categories.
+#' kernel with median heuristic lengthscale without constructing Gram matrices.
+#' Set `num_RFFs = NULL` to use the Gaussian kernel instead. Categorical
+#' variables must be encoded as factors. They use the Dirac kernel, whose
+#' feature map can be represented by a one-hot encoding of the categories.
 #'
 #' Custom feature or Gram matrices can be supplied for variables in `df`. These
 #' take precedence over automatically generated representations, independently
